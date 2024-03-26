@@ -1,23 +1,24 @@
-use std::error::Error;
 use std::fs::File;
+use std::io;
 use std::io::Read;
 use std::path::PathBuf;
-use glob::glob;
+
+use glob::{glob, PatternError};
 use zusi_result_lib::result_analyser_group::ResultAnalyserGroup;
+use zusi_xml_lib::xml::zusi::{DeError, Zusi, ZusiValue};
 use zusi_xml_lib::xml::zusi::result::ZusiResult;
-use zusi_xml_lib::xml::zusi::{Zusi, ZusiValue};
 
 pub struct AnalyseFilesArgs {
     pub pattern: String,
     pub debug: bool,
 }
 
-pub fn analyse_files(args: AnalyseFilesArgs) -> Result<(), Box<dyn Error>> {
+pub fn analyse_files(args: AnalyseFilesArgs) -> Result<(), PatternError> {
     println!("Analyse files by pattern: {}", args.pattern);
 
     let mut results: Vec<ZusiResult> = vec![];
 
-    for entry in glob("../zusi-result-lib/data/*.result.xml").unwrap() {
+    for entry in glob("../zusi-result-lib/data/*.result.xml")? {
         match entry {
             Ok(path) => {
                 match read_result(&path) {
@@ -44,17 +45,24 @@ pub fn analyse_files(args: AnalyseFilesArgs) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn read_result(path: &PathBuf) -> Result<ZusiResult, Box<dyn Error>> {
-    let mut input_file = File::open(path)?;
+#[derive(Debug)]
+enum ReadResultError {
+    IOError(io::Error),
+    DeError(DeError),
+    NoResults,
+}
+
+fn read_result(path: &PathBuf) -> Result<ZusiResult, ReadResultError> {
+    let mut input_file = File::open(path).map_err(|err| ReadResultError::IOError(err))?;
     let mut contents = String::new();
-    input_file.read_to_string(&mut contents)?;
-    let zusi = Zusi::from_xml(&*contents)?;
+    input_file.read_to_string(&mut contents).map_err(|err| ReadResultError::IOError(err))?;
+    let zusi = Zusi::from_xml(&*contents).map_err(|err| ReadResultError::DeError(err))?;
     for value in zusi.value {
         if let ZusiValue::Result(result) = value {
             return Ok(result);
         }
     }
-    Err("No results found.".into())
+    Err(ReadResultError::NoResults)
 }
 
 fn print_analysis(results: Vec<ZusiResult>) {
