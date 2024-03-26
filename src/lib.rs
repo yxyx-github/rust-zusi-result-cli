@@ -18,7 +18,7 @@ pub fn analyse_files(args: AnalyseFilesArgs) -> Result<(), PatternError> {
 
     let mut results: Vec<ZusiResult> = vec![];
 
-    for entry in glob("../zusi-result-lib/data/*.result.xml")? {
+    for entry in glob(&args.pattern)? {
         match entry {
             Ok(path) => {
                 match read_result(&path) {
@@ -56,7 +56,7 @@ fn read_result(path: &PathBuf) -> Result<ZusiResult, ReadResultError> {
     let mut input_file = File::open(path).map_err(|err| ReadResultError::IOError(err))?;
     let mut contents = String::new();
     input_file.read_to_string(&mut contents).map_err(|err| ReadResultError::IOError(err))?;
-    let zusi = Zusi::from_xml(&*contents).map_err(|err| ReadResultError::DeError(err))?;
+    let zusi = Zusi::from_xml(&contents).map_err(|err| ReadResultError::DeError(err))?;
     for value in zusi.value {
         if let ZusiValue::Result(result) = value {
             return Ok(result);
