@@ -6,17 +6,24 @@ use std::io::Read;
 use std::path::PathBuf;
 
 use glob::{glob, PatternError};
-use zusi_result_lib::result_analyser_group::ResultAnalyserGroup;
+use zusi_result_lib::result_analyser::AnalyseError;
+use zusi_result_lib::result_analyser_group::{CreateAnalyserGroupError, ResultAnalyserGroup};
 use zusi_xml_lib::xml::zusi::{DeError, Zusi, ZusiValue};
 use zusi_xml_lib::xml::zusi::result::ZusiResult;
 use crate::cli::AnalyseFilesArgs;
 
-pub fn analyse_files(args: AnalyseFilesArgs) -> Result<(), PatternError> {
+#[derive(Debug)]
+pub enum AnalyseFilesError {
+    PatternError(PatternError),
+    PrintAnalysisError(PrintAnalysisError),
+}
+
+pub fn analyse_files(args: AnalyseFilesArgs) -> Result<(), AnalyseFilesError> {
     println!("Analyse files by pattern: {}", args.pattern);
 
     let mut results: Vec<ZusiResult> = vec![];
 
-    for entry in glob(&args.pattern)? {
+    for entry in glob(&args.pattern).map_err(|e| AnalyseFilesError::PatternError(e))? {
         match entry {
             Ok(path) => {
                 match read_result(&path) {
@@ -33,13 +40,14 @@ pub fn analyse_files(args: AnalyseFilesArgs) -> Result<(), PatternError> {
             }
             Err(e) => {
                 eprintln!("{:?}", e);
+
             }
         }
     }
 
     println!();
     println!("Analysis results:");
-    print_analysis(results);
+    print_analysis(results).map_err(|e| AnalyseFilesError::PrintAnalysisError(e))?;
     Ok(())
 }
 
@@ -63,14 +71,21 @@ fn read_result(path: &PathBuf) -> Result<ZusiResult, ReadResultError> {
     Err(ReadResultError::NoResults)
 }
 
-fn print_analysis(results: Vec<ZusiResult>) { // TODO: handle errors
-    let mut analyser_group: ResultAnalyserGroup = results.try_into().unwrap();
-    println!("total distance: {} m", analyser_group.total_distance().unwrap());
-    println!("average distance: {} m", analyser_group.average_distance().unwrap());
-    let average_speed = analyser_group.average_speed().unwrap();
+#[derive(Debug)]
+pub enum PrintAnalysisError {
+    CreateAnalyserGroupError(CreateAnalyserGroupError),
+    AnalyseError(AnalyseError),
+}
+
+fn print_analysis(results: Vec<ZusiResult>) -> Result<(), PrintAnalysisError> {
+    let mut analyser_group: ResultAnalyserGroup = results.try_into().map_err(|e| PrintAnalysisError::CreateAnalyserGroupError(e))?;
+    println!("total distance: {} m", analyser_group.total_distance().map_err(|e| PrintAnalysisError::AnalyseError(e))?);
+    println!("average distance: {} m", analyser_group.average_distance().map_err(|e| PrintAnalysisError::AnalyseError(e))?);
+    let average_speed = analyser_group.average_speed().map_err(|e| PrintAnalysisError::AnalyseError(e))?;
     println!("average speed: {} m/s = {} km/h", average_speed, average_speed * 3.6);
-    let pure_average_speed = analyser_group.pure_average_speed().unwrap();
+    let pure_average_speed = analyser_group.pure_average_speed().map_err(|e| PrintAnalysisError::AnalyseError(e))?;
     println!("pure average speed: {} m/s = {} km/h", pure_average_speed, pure_average_speed * 3.6);
-    println!("total driving time: {}", analyser_group.total_driving_time().unwrap());
-    println!("total pure driving time: {}", analyser_group.total_pure_driving_time().unwrap());
+    println!("total driving time: {}", analyser_group.total_driving_time().map_err(|e| PrintAnalysisError::AnalyseError(e))?);
+    println!("total pure driving time: {}", analyser_group.total_pure_driving_time().map_err(|e| PrintAnalysisError::AnalyseError(e))?);
+    Ok(())
 }
