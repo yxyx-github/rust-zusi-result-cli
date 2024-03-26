@@ -1,3 +1,5 @@
+pub mod cli;
+
 use std::fs::File;
 use std::io;
 use std::io::Read;
@@ -7,11 +9,7 @@ use glob::{glob, PatternError};
 use zusi_result_lib::result_analyser_group::ResultAnalyserGroup;
 use zusi_xml_lib::xml::zusi::{DeError, Zusi, ZusiValue};
 use zusi_xml_lib::xml::zusi::result::ZusiResult;
-
-pub struct AnalyseFilesArgs {
-    pub pattern: String,
-    pub debug: bool,
-}
+use crate::cli::AnalyseFilesArgs;
 
 pub fn analyse_files(args: AnalyseFilesArgs) -> Result<(), PatternError> {
     println!("Analyse files by pattern: {}", args.pattern);
@@ -65,7 +63,7 @@ fn read_result(path: &PathBuf) -> Result<ZusiResult, ReadResultError> {
     Err(ReadResultError::NoResults)
 }
 
-fn print_analysis(results: Vec<ZusiResult>) {
+fn print_analysis(results: Vec<ZusiResult>) { // TODO: handle errors
     let mut analyser_group: ResultAnalyserGroup = results.try_into().unwrap();
     println!("total distance: {} m", analyser_group.total_distance().unwrap());
     println!("average distance: {} m", analyser_group.average_distance().unwrap());
