@@ -55,7 +55,7 @@ pub fn analyse_files(args: AnalyseFilesArgs) -> Result<(), AnalyseFilesError> {
 enum ReadResultError {
     IOError(io::Error),
     DeError(DeError),
-    NoResults,
+    NoResult,
 }
 
 fn read_result(path: &PathBuf) -> Result<ZusiResult, ReadResultError> {
@@ -68,7 +68,7 @@ fn read_result(path: &PathBuf) -> Result<ZusiResult, ReadResultError> {
             return Ok(result);
         }
     }
-    Err(ReadResultError::NoResults)
+    Err(ReadResultError::NoResult)
 }
 
 #[derive(Debug)]
