@@ -6,7 +6,7 @@ use std::io::Read;
 use std::path::PathBuf;
 
 use glob::{glob, PatternError};
-use zusi_result_lib::result_analyser::AnalyseError;
+use zusi_result_lib::result_analyser::{AnalyseError, ResultAnalyser};
 use zusi_result_lib::result_analyser_group::{CreateAnalyserGroupError, ResultAnalyserGroup};
 use zusi_xml_lib::xml::zusi::{DeError, Zusi, ZusiValue};
 use zusi_xml_lib::xml::zusi::result::ZusiResult;
@@ -78,7 +78,7 @@ pub enum PrintAnalysisError {
 }
 
 fn print_analysis(results: Vec<ZusiResult>) -> Result<(), PrintAnalysisError> {
-    let mut analyser_group: ResultAnalyserGroup = results.try_into().map_err(|e| PrintAnalysisError::CreateAnalyserGroupError(e))?;
+    let mut analyser_group: ResultAnalyserGroup<ResultAnalyser<ZusiResult>, ZusiResult> = results.try_into().map_err(|e| PrintAnalysisError::CreateAnalyserGroupError(e))?;
     println!("total distance: {} m", analyser_group.total_distance().map_err(|e| PrintAnalysisError::AnalyseError(e))?);
     println!("average distance: {} m", analyser_group.average_distance().map_err(|e| PrintAnalysisError::AnalyseError(e))?);
     let average_speed = analyser_group.average_speed().map_err(|e| PrintAnalysisError::AnalyseError(e))?;
